@@ -1,39 +1,46 @@
-# Read feature list and activity names
-features_list <- read.table("features.txt", col.names = c("no","features"))
-activity <- read.table("activity_labels.txt", col.names = c("label", "activity"))
+# Assigning all data frames
 
 
-# Read test dataset and combine into one dataframe
-subject_test <- read.table("test/subject_test.txt", col.names = "subject")
-x_test <- read.table("test/X_test.txt", col.names = features_list$features)
-y_test <- read.table("test/Y_test.txt", col.names = "label")
-y_test_label <- left_join(y_test, activity, by = "label")
+features <- read.table("UCI HAR Dataset/features.txt", col.names = c("n","functions"))
+activities <- read.table("UCI HAR Dataset/activity_labels.txt", col.names = c("code", "activity"))
+subject_test <- read.table("UCI HAR Dataset/test/subject_test.txt", col.names = "subject")
+x_test <- read.table("UCI HAR Dataset/test/X_test.txt", col.names = features$functions)
+y_test <- read.table("UCI HAR Dataset/test/y_test.txt", col.names = "code")
+subject_train <- read.table("UCI HAR Dataset/train/subject_train.txt", col.names = "subject")
+x_train <- read.table("UCI HAR Dataset/train/X_train.txt", col.names = features$functions)
+y_train <- read.table("UCI HAR Dataset/train/y_train.txt", col.names = "code")
 
-tidy_test <- cbind(subject_test, y_test_label, x_test)
-tidy_test <- select(tidy_test, -label)
+# Merges the training and the test sets
+X <- rbind(x_train, x_test)
+Y <- rbind(y_train, y_test)
+Subject <- rbind(subject_train, subject_test)
+Merged_Data <- cbind(Subject, Y, X)
+
+# Extracts only the measurements on the mean and standard deviation for each measurement and use descriptive activity names to name the activities in the data set.
+
+TidyData <- Merged_Data %>% select(subject, code, contains("mean"), contains("std"))
+TidyData$code <- activities[TidyData$code, 2]
+# Appropriately labels the data set with descriptive variable names.
+names(TidyData)[2] = "activity"
+names(TidyData)<-gsub("Acc", "Accelerometer", names(TidyData))
+names(TidyData)<-gsub("Gyro", "Gyroscope", names(TidyData))
+names(TidyData)<-gsub("BodyBody", "Body", names(TidyData))
+names(TidyData)<-gsub("Mag", "Magnitude", names(TidyData))
+names(TidyData)<-gsub("^t", "Time", names(TidyData))
+names(TidyData)<-gsub("^f", "Frequency", names(TidyData))
+names(TidyData)<-gsub("tBody", "TimeBody", names(TidyData))
+names(TidyData)<-gsub("-mean()", "Mean", names(TidyData), ignore.case = TRUE)
+names(TidyData)<-gsub("-std()", "STD", names(TidyData), ignore.case = TRUE)
+names(TidyData)<-gsub("-freq()", "Frequency", names(TidyData), ignore.case = TRUE)
+names(TidyData)<-gsub("angle", "Angle", names(TidyData))
+names(TidyData)<-gsub("gravity", "Gravity", names(TidyData))
+
+inalData <- TidyData %>%
+    group_by(subject, activity) %>%
+    summarise_all(funs(mean))
+write.table(FinalData, "FinalData.txt", row.name=FALSE)
 
 
-# Read train dataset
-subject_train <- read.table("train/subject_train.txt", col.names = "subject")
-x_train <- read.table("train/X_train.txt", col.names = features_list$features)
-y_train <- read.table("train/Y_train.txt", col.names = "label")
-y_train_label <- left_join(y_train, activity, by = "label")
 
-tidy_train <- cbind(subject_train, y_train_label, x_train)
-tidy_train <- select(tidy_train, -label)
-
-# combine test and train data set
-tidy_set <- rbind(tidy_test, tidy_train)
-
-# Extract mean and standard deviation
-tidy_mean_std <- select(tidy_set, contains("mean"), contains("std"))
-
-# Averanging all variable by each subject each activity
-tidy_mean_std$subject <- as.factor(tidy_set$subject)
-tidy_mean_std$activity <- as.factor(tidy_set$activity)
-
-tidy_avg <- tidy_mean_std %>%
-  group_by(subject, activity) %>%
-  summarise_each(funs(mean))
-
-
+# for checking
+FinalData
